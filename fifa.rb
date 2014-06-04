@@ -40,13 +40,14 @@ while true do
       availability = CATEGORIES.map do |cat_code, cat_name|
         seats_per_category = seats_from_same_game.find { |m| m['PRPCategoryId'] == cat_code }
         tickets_available  = true if seats_per_category['Quantity'].to_i > 0 && cat_code == '4'
-        "#{cat_name} - #{seats_per_category['Quantity'].to_i}"
+        "#{cat_name} #{seats_per_category['Quantity'].to_i}"
       end
 
-      puts "#{match_name}: #{availability.join('/')}"
+      puts "#{match_name}: #{availability.join(' / ')}"
     end
 
-    system('say "ingresso para o jogo da fifa"') if tickets_available
+    puts
+    system('say "ingresso para o jogo da fifa disponivel"') if tickets_available
   rescue
     puts 'Error'
   ensure
