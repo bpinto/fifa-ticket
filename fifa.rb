@@ -43,11 +43,15 @@ while true do
         "#{cat_name} #{seats_per_category['Quantity'].to_i}"
       end
 
-      puts "#{match_name}: #{availability.join(' / ')}"
+      puts "#{match_name}: #{availability.join(' / ')}" if tickets_available
     end
 
-    puts
-    system('say "ingresso para o jogo da fifa disponivel"') if tickets_available
+    if tickets_available
+      puts
+      system('say "ingresso para o jogo da fifa disponivel"')
+    else
+      print '.'
+    end
   rescue
     puts 'Error'
   ensure
