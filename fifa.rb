@@ -1,22 +1,53 @@
 require 'oj'
 require 'net/http'
 
+MATCHES = {
+  'IMT11' => 'Argentina vs Bosnia-Herzegovina',
+  'IMT19' => 'Spain vs Chile',
+  'IMT31' => 'Belgium vs Russia',
+  'IMT42' => 'Ecuador vs France',
+  'IMT50' => '1C vs 2D',
+  'IMT58' => 'Match 58',
+  'IMT64' => 'FINAL',
+}
+
+CATEGORIES = {
+  '1'   => 'CAT1',
+  '2'   => 'CAT2',
+  '3'   => 'CAT3',
+  '4'   => 'CAT4',
+  #'5'   => 'W',
+  #'13'  => 'M',
+  #'14'  => 'O',
+}
+
 while true do
   begin
-    uri      = URI('https://fcctickets.fifa.com/TopsAkaCalls/Calls.aspx/getBasicDataAvaDem?l=en&c=BRA')
+    uri      = URI('https://fwctickets.fifa.com/TopsAkaCalls/Calls.aspx/getRefreshChartAvaDem?l=en&c=BRA')
     response = Net::HTTP.get(uri)
 
     json = Oj.load response
     data = Oj.load json['d']['data']
 
-    final_match = data['BasicCodes']['AVAILABILITY'].find do |match|
-      match['ProductID'] == 'IMT16' && match['CategoryName'] == 'CAT4'
+    matches = data['BasicCodes']['PRODUCTPRICES'].select do |match|
+      CATEGORIES.keys.include?(match['PRPCategoryId']) && MATCHES.keys.include?(match['PRPProductId'])
     end
 
-    puts "Quantidade de assentos disponíveis: #{final_match['Quantity'].to_i}"
-    final_match_available = final_match['Quantity'].to_i > 0
+    tickets_available = false
+    MATCHES.each do |match_code, match_name|
+      seats_from_same_game = matches.select { |m| m['PRPProductId'] == match_code }
 
-    system('say "ingresso para o jogo da fifa"') if final_match_available
+      availability = CATEGORIES.map do |cat_code, cat_name|
+        seats_per_category = seats_from_same_game.find { |m| m['PRPCategoryId'] == cat_code }
+        tickets_available  = true if seats_per_category['Quantity'].to_i > 0
+
+        "#{cat_name} - #{seats_per_category['Quantity'].to_i}"
+      end
+
+      puts "#{match_name}: #{availability.join('/')}"
+    end
+
+    system('say "ingresso para o jogo da fifa"') if tickets_available
   rescue
     puts 'Error'
   ensure
