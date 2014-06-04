@@ -51,7 +51,7 @@ while true do
   rescue
     puts 'Error'
   ensure
-    sleep 300
+    sleep 180
   end
 end
 
