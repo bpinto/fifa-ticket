@@ -1,5 +1,8 @@
 require 'oj'
 require 'net/http'
+require 'net/https'
+require 'mandrill'
+require 'terminal-table'
 
 MATCHES = {
   'IMT11' => 'Argentina vs Bosnia-Herzegovina',
@@ -21,6 +24,37 @@ CATEGORIES = {
   #'14'  => 'O',
 }
 
+# Set MANDRILL_APIKEY environment variable
+def send_email(table)
+  mandrill = Mandrill::API.new
+
+  message = {
+    subject: 'Ingressos para a Copa do Mundo',
+    from_name: 'TODO',
+    text: table.to_s,
+    to: [
+      { email: 'TODO', name: 'TODO' },
+    ],
+    from_email: 'TODO'
+  }
+
+  mandrill.messages.send message
+end
+
+def send_notification(table)
+  url = URI.parse('https://api.pushover.net/1/messages.json')
+  req = Net::HTTP::Post.new(url.path)
+  req.set_form_data({
+    token: 'TODO',
+    user: 'TODO',
+    message: 'Ingressos para a Copa do Mundo',
+  })
+  res = Net::HTTP.new(url.host, url.port)
+  res.use_ssl = true
+  res.verify_mode = OpenSSL::SSL::VERIFY_PEER
+  res.start {|http| http.request(req) }
+end
+
 while true do
   begin
     uri      = URI('https://fwctickets.fifa.com/TopsAkaCalls/Calls.aspx/getRefreshChartAvaDem?l=en&c=BRA')
@@ -33,29 +67,30 @@ while true do
       CATEGORIES.keys.include?(match['PRPCategoryId']) && MATCHES.keys.include?(match['PRPProductId'])
     end
 
-    tickets_available = false
+    table = Terminal::Table.new
+    table.headings = ['Jogo'] + CATEGORIES.values
+
     MATCHES.each do |match_code, match_name|
-      seats_from_same_game = matches.select { |m| m['PRPProductId'] == match_code }
+      seats_from_match = matches.select { |m| m['PRPProductId'] == match_code }.
+        sort { |m| m['PRPCategoryId'].to_i }
 
-      availability = CATEGORIES.map do |cat_code, cat_name|
-        seats_per_category = seats_from_same_game.find { |m| m['PRPCategoryId'] == cat_code }
-        tickets_available  = true if seats_per_category['Quantity'].to_i > 0 && cat_code == '4'
-        "#{cat_name} #{seats_per_category['Quantity'].to_i}"
+      if seats_from_match.any? { |seat| seat['Quantity'].to_i > 10 }
+        table.add_row [match_name, *seats_from_match.map { |seat| seat['Quantity'].to_i }]
       end
-
-      puts "#{match_name}: #{availability.join(' / ')}" if tickets_available
     end
 
-    if tickets_available
-      puts
-      system('say "ingresso para o jogo da fifa disponivel"')
+    if table.rows.any?
+      puts "Notifications sent\n"
+      send_notification table
+      send_email table
+      sleep 300
     else
       print '.'
     end
   rescue
     puts 'Error'
   ensure
-    sleep 180
+    sleep 5
   end
 end
 
